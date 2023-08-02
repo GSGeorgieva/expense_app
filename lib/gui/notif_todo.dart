@@ -1,67 +1,74 @@
+import 'dart:convert';
 
-/*
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/data/latest.dart' as tz;
-import 'package:timezone/timezone.dart' as tz;// import 'package:firebase_m';
+import 'dart:async';
 
- */
+class FirebaseApi{
+  final _firebaseMessaging = FirebaseMessaging.instance;
 
-/*
-  NotificationService().initNotification();
-  tz.initializeTimeZones();
-  final  scheduleTime =  tz.TZDateTime.from(DateTime(2023,5,9,22,44), tz.local);
-  NotificationService().scheduleNotification(
-      title: 'Scheduled Notification',
-      body: '$scheduleTime',
-      scheduledNotificationDateTime: scheduleTime);
+  final _androidChannel = const AndroidNotificationChannel(
+    'high_importance_channel',
+    'High Importance Notifications',
+    description: 'This channel is used for important notifications',
+    importance: Importance.defaultImportance
+  );
 
- */
+  final _localNotifPlugin = FlutterLocalNotificationsPlugin();
 
-/*
-class NotificationService {
-  final FlutterLocalNotificationsPlugin notificationsPlugin = FlutterLocalNotificationsPlugin();
 
-  Future<void> initNotification() async {
-    AndroidInitializationSettings initializationSettingsAndroid = const AndroidInitializationSettings('flutter_logo');
-
-    var initializationSettings = InitializationSettings(
-        android: initializationSettingsAndroid);
-    await notificationsPlugin.initialize(initializationSettings,
-        onDidReceiveNotificationResponse:
-            (NotificationResponse notificationResponse) async {});
+  Future<void> handleBackgroundMessage(RemoteMessage? msg) async{
+    if(msg == null) return;
+    print('AA ${msg.notification?.title}');
+    print(msg.notification?.body);
+    print(msg.data);
   }
 
-  notificationDetails() {
-    return const NotificationDetails(
-        android: AndroidNotificationDetails('channelId', 'channelName',
-            importance: Importance.max));
+
+
+  Future<void>initNotifications() async{
+    await _firebaseMessaging.requestPermission();
+    final fcmToken = await _firebaseMessaging.getToken();
+    print('Token $fcmToken');
+    FirebaseMessaging.onBackgroundMessage(handleBackgroundMessage);
+    await initPushNotifications();
+    await initLocalNotification();
   }
 
-  Future showNotification(
-      {int id = 0, String? title, String? body, String? payLoad}) async {
-    return notificationsPlugin.show(
-        id, title, body, await notificationDetails());
-  }
+  Future initLocalNotification() async{
+    const android = AndroidInitializationSettings('@drawable/ic_launcher');
+    const settings = InitializationSettings(android: android);
 
-  Future scheduleNotification(
-      {int id = 0,
-        String? title,
-        String? body,
-        String? payLoad,
-        required DateTime scheduledNotificationDateTime}) async {
-    return notificationsPlugin.zonedSchedule(
-        id,
-        title,
-        body,
-        tz.TZDateTime.from(
-          scheduledNotificationDateTime,
-          tz.local,
-        ),
-        await notificationDetails(),
-        androidAllowWhileIdle: true,
-        uiLocalNotificationDateInterpretation:
-        UILocalNotificationDateInterpretation.absoluteTime);
-  }
+    await _localNotifPlugin.initialize(settings);
+    final platform = _localNotifPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    await platform?.createNotificationChannel(_androidChannel);
 }
 
- */
+  Future initPushNotifications() async{
+    await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true
+    );
+
+    FirebaseMessaging.instance.getInitialMessage().then(handleBackgroundMessage); //handleMessage
+    FirebaseMessaging.onMessageOpenedApp.listen(handleBackgroundMessage); //handleMessage
+    FirebaseMessaging.onBackgroundMessage(handleBackgroundMessage);
+    FirebaseMessaging.onMessage.listen((event) {
+      final notification = event.notification;
+      if(notification == null) return;
+      _localNotifPlugin.show(notification.hashCode, notification.title, notification.body, NotificationDetails(
+        android: AndroidNotificationDetails(
+          _androidChannel.id,
+          _androidChannel.name,
+          channelDescription: _androidChannel.description,
+          icon: '@drawable/ic_launcher'
+        ),
+      ),
+        payload: jsonEncode(event.toMap()),
+
+      );
+    });
+
+  }
+}

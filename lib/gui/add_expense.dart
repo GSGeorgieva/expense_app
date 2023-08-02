@@ -1,113 +1,182 @@
 part of main.dart;
 
-class ExpenseRp extends StatefulWidget {
-  final ent.Category category;
+class ExpensePage extends StatefulWidget {
+  final DateTime? date;
 
-  const ExpenseRp({super.key, required this.category});
+  const ExpensePage({super.key, this.date});
 
   @override
-  ExpenseState createState() => ExpenseState();
+  ExpenseCont createState() => ExpenseCont()..date = date ?? DateTime.now();
 }
 
-class ExpenseState extends State<ExpenseRp> {
+class ExpenseCont extends State<ExpensePage> {
+  List? categories;
+  late DateTime date;
+  num? value;
+  final TextEditingController _sum = TextEditingController();
   final _db = FirebaseFirestore.instance;
-  late ElevatedButton btn;
-  bool _isEnabled = false;
-  final today = DateTime.now();
+  late ElevatedButton btnAdd;
+  int? optionSelected;
+  ent.Category? category;
+  bool? isEnabled = false;
+  late String _dateRep;
+  String? currencyCode;
+  bool listenForChange = false;
 
-  insertExpense(ent.Category category) async {
+  _insertExpense() async {
     final cat = ent.Expense(
-        icon: category.icon,
-        title: category.title,
-        color: category.color,
-        date: DateTime.now().millisecondsSinceEpoch,
+        icon: category!.icon,
+        title: category!.title,
+        color: category!.color,
+        date: date.millisecondsSinceEpoch,
         uid: FirebaseAuth.instance.currentUser!.uid,
-        value: num.parse(_value.value.text));
+        value: num.parse(_sum.value.text));
 
-    await _db.collection('expenses').add(cat.toJson()).whenComplete(() async =>
-        Navigator.push(
+    await _db.collection(ent.$Expense.expense).add(cat.toJson()).whenComplete(
+        () async => Navigator.push(
             context,
             MaterialPageRoute(
-                builder: (BuildContext context) =>
-                    FirstPage(date: DateTime.now()))));
+                builder: (BuildContext context) => Home(date: date))));
   }
 
-  final TextEditingController _value = TextEditingController();
+  getCategories() async {
+    if (categories != null) return categories;
+    final colCat = await _db
+        .collection(ent.$Category.categories)
+        .where(ent.$Category.uid,
+            isEqualTo: FirebaseAuth.instance.currentUser!.uid)
+        .get();
+
+    categories = colCat.docs;
+    return categories;
+  }
+
+  void checkOption(int index) {
+    prepareInsert();
+    setState(() {
+      optionSelected = index;
+    });
+  }
+
+  void prepareInsert() {
+    setState(() {
+      isEnabled = category != null && _sum.text != '';
+    });
+  }
+
+  void changeDate(DateTime? v) {
+    setState(() {
+      if (v != null) date = v;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final formatedDate = DateFormat('yyyy-MM-dd').format(DateTime.now().toLocal());
+    print('AAAA $date');
+    _dateRep = DateFormat('yyyy-MM-dd').format(date.toLocal());
     return Scaffold(
-      appBar: AppBar(),
-      body: Form(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 30),
-          child: ListView(
-            children: [
-              Container(
-                  margin: const EdgeInsets.symmetric(vertical: 10.0),
-                  child: CircleAvatar(
-                    radius: 30,
-                    backgroundColor: Color(widget.category.color!),
-                    child: IconButton(
-                      icon: Image.network(widget.category.icon!),
-                      onPressed: () {},
-                    ),
-                  )),
-              Row(
-                children: [
-                  Text(formatedDate),
-                  ///todo ctreate calendar button
-                  FloatingActionButton(
-                    backgroundColor: Colors.blue,
-                    onPressed: () {
+        resizeToAvoidBottomInset: true,
+        appBar: AppBar(),
+        body: SingleChildScrollView(
+          child: Column(children: [
+            Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+                  Row(
+                    children: [
                       Container(
-                        height: 250,
-                        margin: const EdgeInsets.symmetric(vertical: 10.0),
-                        child: TextFormField(
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(labelText: 'Value:'),
-                          controller: _value,
-                          onChanged: (v) => _isEnabled = v.isNotEmpty,
-                        ),
-                      );
-                    },
-                    child: const Icon(
-                      Icons.calendar_today,
-                      size: 25,
-                      color: Colors.black38,
-                    ),
-                  )
-                ]
-              ),
-              SizedBox(
-                // height: 600,
-                child: CalendarDatePicker(
-                  initialDate: today,
-                  firstDate: DateTime(1999, 1, 1),
-                  lastDate: DateTime(today.year + 20, today.month, today.day),
-                  onDateChanged: (e) => {},
-                )
-                ,
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  btn = ElevatedButton(
-                    onPressed: () async {
-                      _isEnabled ? await insertExpense(widget.category) : null;
-                    },
-                    child: const Text(
-                      'Add',
-                      style: TextStyle(fontSize: 18.0),
-                    ),
+                          height: 40,
+                          width: 200,
+                          margin: const EdgeInsets.fromLTRB(50, 30, 10, 0),
+                          child: TextFormField(
+                              textAlign: TextAlign.center,
+                              keyboardType: TextInputType.number,
+                              style: const TextStyle(fontSize: 26),
+                              decoration: const InputDecoration(
+                                  isDense: true, // Added this
+                                  contentPadding: EdgeInsets.zero),
+                              controller: _sum,
+                              onEditingComplete: () {
+                                FocusScope.of(context).unfocus();
+                                prepareInsert();
+                              }))
+                    ],
                   ),
-                ],
-              )
-            ],
-          ),
-        ),
-      ),
-    );
+                  Container(
+                    margin: const EdgeInsets.fromLTRB(10, 0, 10, 0),
+                    child: (Column(
+                      children: [
+                        ElevatedButton(
+                          child: const Icon(Icons.calendar_today_outlined),
+                          onPressed: () {
+                            showDatePicker(
+                                    context: context,
+                                    initialDate: date,
+                                    firstDate: DateTime(2000, 1, 1),
+                                    lastDate: DateTime(date.year + 5, 1, 1))
+                                .then((value) => changeDate(value));
+                          },
+                        ),
+                        Text(_dateRep)
+                      ],
+                    )),
+                  )
+                ]),
+            SingleChildScrollView(
+                child: Container(
+                    margin: const EdgeInsets.fromLTRB(0, 50, 0, 0),
+                    height: 500,
+                    width: MediaQuery.of(context).size.width,
+                    child: Scaffold(
+                        body: FutureBuilder(
+                            future: getCategories(),
+                            builder: (ctx, snapshot) {
+                              if (snapshot.connectionState ==
+                                  ConnectionState.done) {
+                                if (snapshot.hasError) {
+                                  return Center(
+                                    child: Text(
+                                      '${snapshot.error} occurred',
+                                      style: const TextStyle(fontSize: 18),
+                                    ),
+                                  );
+                                } else if (snapshot.hasData) {
+                                  final data = snapshot.data as List;
+                                  final el = data
+                                      .map((e) =>
+                                          e.data() as Map<String, dynamic>?)
+                                      .toList();
+                                  return GridView.count(
+                                      crossAxisCount: 4,
+                                      crossAxisSpacing: 0,
+                                      mainAxisSpacing: 0,
+                                      children:
+                                          List.generate(el.length, (index) {
+                                        final dto =
+                                            ent.Category.fromJson(el[index]!);
+                                        return Center(
+                                            child: SelectCard(dto, onTap: () {
+                                          category = dto;
+                                          return checkOption(index);
+                                        }, selected: index == optionSelected));
+                                      }));
+                                }
+                              }
+                              return const Center(
+                                  child: CircularProgressIndicator());
+                            })))),
+            Container(
+                constraints:
+                    const BoxConstraints.tightFor(width: 120, height: 40),
+                margin: const EdgeInsets.fromLTRB(0, 0, 0, 0),
+                // height: 100,
+                alignment: Alignment.center,
+                child: ElevatedButton(
+                    onPressed: isEnabled == null || !isEnabled!
+                        ? null
+                        : _insertExpense,
+                    child: const Text('Add', style: TextStyle(fontSize: 18.0))))
+          ]),
+        ));
   }
 }

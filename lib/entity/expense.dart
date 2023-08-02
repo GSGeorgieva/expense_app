@@ -20,8 +20,10 @@ class Expense {
 }
 
 class ExpenseCollection<E extends Expense> extends Collection {
-  List<Expense?> sortData(List<Map<String, dynamic>?> data) {
-    final List<Expense?> res = <Expense>[];
+
+  ExpenseCollection sortData(List<Map<String, dynamic>?>? data) {
+    final ExpenseCollection res = ExpenseCollection();
+    if(data == null) return res;
     for (final d in data) {
       final exp = Expense.fromJson(d!);
       Expense? current = res.firstWhereOrNull((c) => c?.title == exp.title);
@@ -37,7 +39,7 @@ class ExpenseCollection<E extends Expense> extends Collection {
     return res;
   }
 
-  Map<String, double> pieData(List<Expense?> data) {
+  Map<String, double> pieData(ExpenseCollection data) {
     final Map<String, double> result = {};
     for (final d in data) {
       if (!result.containsKey(d!.title)) {

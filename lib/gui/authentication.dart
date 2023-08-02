@@ -39,8 +39,7 @@ class AuthGate extends StatelessWidget {
             },
           );
         }
-
-        return FirstPage(date: DateTime.now());
+        return Home(date: DateTime.now()).._def();
       },
     );
   }

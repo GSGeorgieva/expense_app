@@ -11,7 +11,12 @@ class CategoriesState extends State<CategoriesRep> {
   final _db = FirebaseFirestore.instance;
 
   getCategories() async {
-    final colCat = await _db.collection('categories').get();
+    final colCat = await _db
+        .collection(ent.$Category.categories)
+        .where(ent.$Category.uid,
+            isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+        .get();
+
     return colCat.docs;
   }
 
@@ -37,6 +42,7 @@ class CategoriesState extends State<CategoriesRep> {
                       .map((e) => e.data() as Map<String, dynamic>?)
                       .toList();
                   return GridView.count(
+                      padding: const EdgeInsets.all(10),
                       crossAxisCount: 3,
                       crossAxisSpacing: 4.0,
                       mainAxisSpacing: 8.0,
@@ -58,7 +64,7 @@ class CategoriesState extends State<CategoriesRep> {
 }
 
 class SelectCard extends StatelessWidget {
-  SelectCard(this.cat,
+  const SelectCard(this.cat,
       {super.key, required this.onTap, required this.selected});
 
   final ent.Category cat;
@@ -67,13 +73,24 @@ class SelectCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton(
-        onPressed: onTap,
-        style: ElevatedButton.styleFrom(
-            fixedSize: selected ? const Size(100, 100) : const Size(70, 70),
-            shape: const CircleBorder(),
-            padding: const EdgeInsets.all(20),
-            backgroundColor: Color(cat.color!)),
-        child: Image.network(cat.icon!));
+    return Column(
+      children: [
+        Container(
+          height: selected ? 71 : 60,
+          child: ElevatedButton(
+              onPressed: onTap,
+              style: ElevatedButton.styleFrom(
+                  fixedSize:
+                      selected ? const Size(100, 100) : const Size(70, 70),
+                  shape: const CircleBorder(),
+                  padding: const EdgeInsets.all(20),
+                  backgroundColor: Color(cat.color!)),
+              child: Image.network(cat.icon!)),
+        ),
+        Text(cat.title ?? '',
+            style: TextStyle(
+                fontWeight: selected ? FontWeight.bold : FontWeight.normal))
+      ],
+    );
   }
 }

@@ -1,16 +1,21 @@
 part of main.dart;
 
-class FirstPage extends StatelessWidget {
+//ignore: must_be_immutable
+class Home extends StatelessWidget {
   bool? isMonth, isYear, isDay;
-  late String dateFormatted;
-
-  FirstPage(
-      {super.key, required this.date, this.isMonth, this.isDay, this.isYear});
-
-  late DateTime date;
+  late String dateFormatted = '';
   final _db = FirebaseFirestore.instance;
 
-  getDailyExp() async {
+  _def() async {
+    await insertDefaultCategories(_db);
+  }
+
+  Home({super.key, required this.date, this.isMonth, this.isDay, this.isYear});
+
+  late DateTime date;
+  String? currencyCode;
+
+  Future<List> getDailyExp() async {
     if (isMonth == null && isYear == null && isDay == null) isDay = true;
     final uid = FirebaseAuth.instance.currentUser?.uid;
     late DateTime qD1, qD2;
@@ -29,8 +34,14 @@ class FirstPage extends StatelessWidget {
       dateFormatted = DateFormat(DateFormat.YEAR).format(date.toLocal());
     }
 
+    // final colCurrency = await _db
+    //     .collection(ent.$Currency.currency)
+    //     .where(ent.$Currency.uid, isEqualTo: uid)
+    //     .get();
+    // currencyCode = colCurrency.docs.first[ent.$Currency.code];
+
     final colCat = await _db
-        .collection(ent.$Expense.expenses)
+        .collection(ent.$Expense.expense)
         .where(ent.$Expense.uid, isEqualTo: uid)
         .where(ent.$Expense.date,
             isGreaterThanOrEqualTo: qD1.millisecondsSinceEpoch)
@@ -50,11 +61,12 @@ class FirstPage extends StatelessWidget {
             builder: (ctx, snapshot) {
               double total = 0;
               List<Color> colors = [];
-              List<ent.Expense?> sorted = [];
+              ent.ExpenseCollection sorted = ent.ExpenseCollection();
               if (snapshot.connectionState == ConnectionState.done) {
-                final data = snapshot.data as List;
-                final el =
-                    data.map((e) => e.data() as Map<String, dynamic>?).toList();
+                final data = snapshot.data;
+                final el = data
+                    ?.map((e) => e.data() as Map<String, dynamic>?)
+                    .toList();
                 sorted = ent.ExpenseCollection().sortData(el)
                   ..sort(((c, n) => n!.value!.compareTo(c!.value!)));
                 for (var s in sorted) {
@@ -73,10 +85,8 @@ class FirstPage extends StatelessWidget {
                                 ? () => Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                        builder: (BuildContext context) =>
-                                            FirstPage(
-                                                date: DateTime.now(),
-                                                isDay: true)))
+                                        builder: (BuildContext context) => Home(
+                                            date: DateTime.now(), isDay: true)))
                                 : null,
                             child: const Text('Day')),
                         ElevatedButton(
@@ -84,10 +94,9 @@ class FirstPage extends StatelessWidget {
                                 ? () => Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                        builder: (BuildContext context) =>
-                                            FirstPage(
-                                                date: DateTime.now(),
-                                                isMonth: true)))
+                                        builder: (BuildContext context) => Home(
+                                            date: DateTime.now(),
+                                            isMonth: true)))
                                 : null,
                             child: const Text('Month')),
                         ElevatedButton(
@@ -95,12 +104,11 @@ class FirstPage extends StatelessWidget {
                                 ? () => Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                        builder: (BuildContext context) =>
-                                            FirstPage(
-                                                date: DateTime.now(),
-                                                isYear: true)))
+                                        builder: (BuildContext context) => Home(
+                                            date: DateTime.now(),
+                                            isYear: true)))
                                 : null,
-                            child: const Text('Year')),
+                            child: const Text('Year'))
                       ]),
                   SingleChildScrollView(
                       child: Container(
@@ -138,7 +146,7 @@ class FirstPage extends StatelessWidget {
                                                 MaterialPageRoute(
                                                     builder: (BuildContext
                                                             context) =>
-                                                        FirstPage(
+                                                        Home(
                                                             date: date,
                                                             isMonth: isMonth,
                                                             isYear: isYear,
@@ -173,7 +181,7 @@ class FirstPage extends StatelessWidget {
                                                 MaterialPageRoute(
                                                     builder: (BuildContext
                                                             context) =>
-                                                        FirstPage(
+                                                        Home(
                                                             date: date,
                                                             isMonth: isMonth,
                                                             isYear: isYear,
@@ -215,12 +223,15 @@ class FirstPage extends StatelessWidget {
                                 child: FloatingActionButton(
                                     heroTag: 'btn3',
                                     backgroundColor: Colors.blue,
-                                    onPressed: () => Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                            builder: (BuildContext context) =>
-                                                ExpensePage(
-                                                    date: DateTime.now()))),
+                                    onPressed: () {
+                                      ExpensePage p =
+                                          ExpensePage(date: date);
+                                      Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                              builder: (BuildContext context) =>
+                                                  p));
+                                    },
                                     child: const Icon(Icons.add,
                                         size: 20, color: Colors.white)))
                           ]))),
@@ -230,7 +241,8 @@ class FirstPage extends StatelessWidget {
                           shrinkWrap: true,
                           children: List.generate(sorted.length, (index) {
                             final exp = sorted[index];
-                            return AboutListTile(child: DailyExpenseRow(exp));
+                            return AboutListTile(
+                                child: DailyExpenseRow(exp, currencyCode));
                           })))
                 ],
               );
@@ -239,10 +251,12 @@ class FirstPage extends StatelessWidget {
   }
 }
 
+//ignore: must_be_immutable
 class DailyExpenseRow extends StatelessWidget {
   final ent.Expense? cat;
+  String? currencyCode;
 
-  const DailyExpenseRow(this.cat, {super.key});
+  DailyExpenseRow(this.cat, this.currencyCode, {super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -269,7 +283,7 @@ class DailyExpenseRow extends StatelessWidget {
                 Container(
                   alignment: Alignment.center,
                   margin: const EdgeInsets.fromLTRB(0, 0, 10, 0),
-                  child: Text('${cat!.value!} lv'),
+                  child: Text('${cat!.value!} ${currencyCode ?? ''}'),
                 )
               ]));
     } else {

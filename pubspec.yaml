@@ -19,10 +19,12 @@ dependencies:
   flutterfire_ui: ^0.4.3+20
   firebase_auth: ^4.4.0
   pie_chart: ^5.3.2
-  flutter_local_notifications: ^14.0.0+1
   flutter_native_timezone: ^2.0.0
   currency_picker: ^2.0.16
   flutter_launcher_icons: ^0.13.1
+  flutter_colorpicker: ^1.0.3
+  firebase_messaging: ^14.6.5
+  flutter_local_notifications: ^14.0.0+1
 
 dev_dependencies:
   flutter_test:
@@ -38,6 +40,7 @@ flutter:
     - assets/finance.png
     - assets/left.png
     - assets/right.png
+    - assets/avatar.png
 
 flutter_icons:
   android: true

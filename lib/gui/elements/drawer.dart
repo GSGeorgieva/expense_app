@@ -4,14 +4,50 @@ Drawer getDrawer(BuildContext context) => Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          const DrawerHeader(
-            decoration: BoxDecoration(
+          DrawerHeader(
+            decoration: const BoxDecoration(
               color: Colors.blue,
             ),
-            child: Text('Drawer Header'),
+            child: ClipOval(
+              child: FirebaseAuth.instance.currentUser?.photoURL == null
+                  ? Column(children: [
+                      const CircleAvatar(
+                          radius: 40,
+                          backgroundColor: Colors.white,
+                          backgroundImage: AssetImage('assets/avatar.png')),
+                      Text(FirebaseAuth.instance.currentUser!.displayName ?? '',
+                          style: const TextStyle(color: Colors.white70)),
+                      Text(FirebaseAuth.instance.currentUser!.email ?? '',
+                          style: const TextStyle(color: Colors.white70))
+                    ])
+                  : Column(
+                      children: [
+                        CircleAvatar(
+                          radius: 40.0,
+                          backgroundImage: NetworkImage(
+                              FirebaseAuth.instance.currentUser!.photoURL!),
+                          backgroundColor: Colors.transparent,
+                        ),
+                        Text(FirebaseAuth.instance.currentUser!.displayName!,
+                            style: const TextStyle(color: Colors.white70)),
+                        Text(FirebaseAuth.instance.currentUser!.email!,
+                            style: const TextStyle(color: Colors.white70))
+                      ],
+                    ),
+            ),
           ),
           ListTile(
-            title: const Text('Currency'),
+            title: const Text('Main'),
+            onTap: () {
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (BuildContext context) =>
+                          Home(date: DateTime.now())));
+            },
+          ),
+          ListTile(
+            title: const Text('Settings'),
             onTap: () {
               Navigator.push(
                 context,
@@ -20,17 +56,21 @@ Drawer getDrawer(BuildContext context) => Drawer(
             },
           ),
           ListTile(
-            title: const Text('Item 2'),
-            onTap: () {
-              Navigator.pop(context);
-            },
-          ),
-          ListTile(
-            title: const Text('Categories'),
+            title: const Text('My Categories'),
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const CategoriesRep()),
+              );
+            },
+          ),
+          ListTile(
+            title: const Text('Add Category'),
+            onTap: () {
+              AddCategory page = const AddCategory();
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => page),
               );
             },
           ),
@@ -39,7 +79,14 @@ Drawer getDrawer(BuildContext context) => Drawer(
               child: Column(
                 children: <Widget>[
                   const Divider(),
-                  ButtonTheme(child: const SignOutButton())
+                  ElevatedButton(
+                      onPressed: () {
+                        FirebaseAuth.instance.signOut();
+                        // Intent i=new Intent(getApplicationContext(),LoginActivity.class);
+                        // startActivity(i);
+                      },
+                      child: const Text('Sign Out'))
+                  // ButtonTheme(child: const SignOutButton(), )
                 ],
               )),
         ],
