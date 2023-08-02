@@ -10,7 +10,7 @@ import 'package:intl/intl.dart';
 import 'package:pie_chart/pie_chart.dart';
 import 'package:project1/entity.dart' as ent;
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
-import 'notif_todo.dart';
+import 'notifications.dart';
 
 part 'add_expense.dart';
 part '../utilities/default_category.dart';
